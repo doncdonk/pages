@@ -228,7 +228,7 @@ button:focus-visible{outline:3px solid var(--l1);outline-offset:3px}
         </div>
         <div class="combo" id="combo"><b id="comboN">1</b><span id="comboM">COMBO</span></div>
         <div class="gauge"><div class="cells" id="cells"></div><small id="gtext"></small></div>
-        <div class="fbox"><b>FEVER</b><span id="ftext"></span></div>
+        <div class="fbox"><b id="fhead">FEVER</b><span id="ftext"></span></div>
         <div class="fx" id="fx"></div>
         <div class="shade" id="shade"></div>
         <div class="flash" id="flash"></div>
@@ -270,7 +270,7 @@ button:focus-visible{outline:3px solid var(--l1);outline-offset:3px}
     <h2>配当（1ラインあたり）とポイント</h2>
     <div class="paytable" id="paytable"></div>
     <p class="help">1枚で中段、2枚で上中下段、3枚で斜めを含む5ラインが有効です。掛け枚数が少ないほど当たりにくくなり、戦闘での攻撃力も下がります。</p>
-    <p class="help">セブン・BAR・ベル・ダイヤがそろうとポイントがたまり、10ptでモンスターが出現します。戦闘中は1回転ごとにハートを1つ使い、何かがそろえば攻撃します。ダイヤ・ベル・BARでハート1つ、セブンで2つ回復します。はずれると負け、ハートが尽きると逃げられます。倒すとフィーバー（ベット不要で10回転）に入ります。フィーバー中はリールのチェリーがすべて7に変わり、7がそろうたびに50%で残り回数が+3回されます。</p>
+    <p class="help">セブン・BAR・ベル・ダイヤがそろうとポイントがたまり、10ptでモンスターが出現します。戦闘中は1回転ごとにハートを1つ使い、何かがそろえば攻撃します。ダイヤ・ベル・BARでハート1つ、セブンで2つ回復します。はずれると負け、ハートが尽きると逃げられます。倒すとフィーバー（ベット不要で10回転）に入ります。フィーバー中はリールのチェリーがすべて7に変わり、7がそろうたびに50%で残り回数が+3回されます。ライン上に7が2つ並んで外れたときは、必ずもう1回回せます。フィーバー中の配当は、倒したモンスターのレベルに応じてLv1で×1、Lv2で×1.5、Lv3で×2になります。</p>
     <p class="help">キーボード：スペースでスタート／左から順に停止、Z・X・Cで各リール停止、1〜3で掛け枚数、Aでオートプレイ切り替え。</p>
     <div class="tools">
       <button class="tool" id="mute">音：オン</button>
@@ -305,7 +305,7 @@ const LINE_COUNT={1:1,2:3,3:5};
 const TABLES={
   normal:{seven:1/360,bar:1/180,bell:1/28,gem:1/34,grape:1/17,cherry:1/20},
   battle:{seven:.025,bar:.05,bell:.25,gem:.17,grape:.19,cherry:.17},
-  fever:{seven:.115,bar:.04,bell:.28,gem:.2,grape:.2}
+  fever:{seven:.09,bar:.03,bell:.15,gem:.1,grape:.1}
 };
 function drawRole(phase,bet){
   const t=TABLES[phase]||TABLES.normal,scale=phase==='fever'?1:LINE_COUNT[bet]/5;
@@ -329,6 +329,10 @@ function evalGrid(ms,bet){
   });
   return wins;
 }
+function hasReach(ms,bet){
+  return activeLines(bet).some(li=>LINES[li].rows.filter((row,i)=>symAt(i,ms[i],row)==='seven').length===2)
+    &&!evalGrid(ms,bet).some(w=>w.k==='seven');
+}
 function stopCost(i,m,ctx){
   const ms=ctx.ms.slice();ms[i]=m;
   const {role,bet}=ctx,L=LINES[ctx.line],lines=activeLines(bet);
@@ -342,10 +346,16 @@ function stopCost(i,m,ctx){
     if(role==='cherry')cost+=Math.max(0,n-1)*5;
     else if(n)cost+=role==='miss'?300:30;
   }
+  if(SWAP&&role!=='seven'){
+    lines.forEach(li=>{
+      const n=LINES[li].rows.filter((row,j)=>ms[j]!==null&&symAt(j,ms[j],row)==='seven').length;
+      if(n>=2)cost+=60;
+    });
+  }
   if(ms.every(x=>x!==null)){
     evalGrid(ms,bet).forEach(w=>{
       const intended=role!=='miss'&&w.line===ctx.line&&w.k===role;
-      if(!intended)cost+=role==='miss'?300:(w.k==='cherry'&&role!=='cherry'?0:40);
+      if(!intended)cost+=role==='miss'?300:(w.k==='cherry'&&role!=='cherry'?0:(SWAP&&w.k==='seven'?150:40));
     });
   }
   return cost;
@@ -374,6 +384,7 @@ const PT={seven:8,bar:4,bell:2,gem:1};
 const DMG={cherry:4,grape:6,gem:8,bell:10,bar:18,seven:32};
 const HEAL={cherry:0,grape:0,gem:1,bell:1,bar:1,seven:2};
 const BETMULT={1:.5,2:.75,3:1};
+const FEVER_MULT={1:1,2:1.5,3:2};
 const MONS=[null,{name:'ミドリツノダマ',hp:55},{name:'アカツノダマ',hp:80},{name:'ヤミツノダマ',hp:110}];
 const PT_MAX=10,HEART_MAX=5,HEART_START=3,FEVER_SPINS=10,CREDIT_MAX=999999,SPEED=14;
 
@@ -500,7 +511,7 @@ function renderCombo(){
   $('#combo').classList.toggle('show',G.combo>0);
   $('#comboN').textContent=G.combo;$('#comboM').textContent=`COMBO ×${(1+.25*G.combo).toFixed(2)}`;
 }
-function renderFever(){$('#ftext').textContent=`残り${G.fLeft}回 ${G.fTotal}枚`;}
+function renderFever(){$('#fhead').textContent=`FEVER×${FEVER_MULT[G.lv]}`;$('#ftext').textContent=`残り${G.fLeft}回 ${G.fTotal}枚`;}
 function applySwap(on){
   setSwap(on);
   document.querySelectorAll('.cell[data-k="cherry"]').forEach(c=>{
@@ -647,7 +658,7 @@ async function winBattle(){
   say(`${MONS[G.lv].name}を たおした！`);
   await wait(800);
   setPhase('fever');G.fLeft=FEVER_SPINS;G.fTotal=0;renderFever();save();
-  await banner('FEVER!!',600);
+  await banner(`FEVER!! ×${FEVER_MULT[G.lv]}`,700);
   say('チェリーが 7に かわった！');sfx.big();
   document.querySelectorAll('.cell.swapped').forEach(c=>play(c,[{filter:'brightness(3)',transform:'scale(1.25)'},{filter:'none',transform:'scale(1)'}],{duration:500,easing:'steps(5)'}));
   reelEls.forEach(r=>play(r,[{boxShadow:'inset 0 0 0 4px #fff36b'},{boxShadow:'inset 0 0 0 0 #fff36b'}],{duration:500,iterations:2,easing:'steps(2)'}));
@@ -755,15 +766,20 @@ async function resolve(){
     else{const p=payOut(total);await attack(top);await p;}
   } else if(G.phase==='fever'){
     if(total){
-      G.fTotal+=total;
+      const pay=Math.round(total*FEVER_MULT[G.lv]);
+      G.fTotal+=pay;
       (top==='seven'||top==='bar')?sfx.big():sfx.win();
       play(hero,[{transform:'translateY(0)'},{transform:'translateY(-12px)'},{transform:'translateY(0)'}],{duration:360,easing:'steps(4)'});
-      const c=rel($('.fbox'));sparks(c.x+c.w/2,c.y+c.h/2,top==='seven'?16:8,'#fff36b');popText(`+${total}`,c.x+c.w/2,c.y+4,top==='seven'||top==='bar');
-      await payOut(total);
+      const c=rel($('.fbox'));sparks(c.x+c.w/2,c.y+c.h/2,top==='seven'?16:8,'#fff36b');
+      popText(FEVER_MULT[G.lv]>1?`${total}×${FEVER_MULT[G.lv]}=${pay}`:`+${pay}`,c.x+c.w/2,c.y+4,top==='seven'||top==='bar');
+      await payOut(pay);
       if(wins.some(w=>w.k==='seven')&&Math.random()<.5){
         G.fLeft+=3;renderFever();save();sfx.big();
         await banner('+3回！',500);
       }
+    } else if(hasReach(ctx.ms,3)){
+      G.fLeft+=1;renderFever();save();sfx.appear();
+      await banner('おしい！ もう1回',550);
     }
     renderFever();
     say(G.fLeft>0?`フィーバー中！ 残り${G.fLeft}回`:'フィーバー最後の1回が終了');
