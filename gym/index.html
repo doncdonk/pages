@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>地下ジム ベンチプレス・シミュレータ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#d6d3cb; --panel:#c4c0b5; --ink:#24231f; --muted:#5d5a50;
+  --line:#8e8a7d; --paint:#c98f00; --good:#4f7a3a; --bad:#a53a2a;
+  --steel:#5b5f63; --stage:#b9b5a9; --ring:#24231f;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1f2021; --panel:#2a2b2c; --ink:#e6e2d6; --muted:#a19d90;
+    --line:#4a4b4c; --paint:#e0a915; --good:#7fae62; --bad:#d2604d;
+    --steel:#8c9196; --stage:#262728; --ring:#e6e2d6; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1f2021; --panel:#2a2b2c; --ink:#e6e2d6; --muted:#a19d90;
+  --line:#4a4b4c; --paint:#e0a915; --good:#7fae62; --bad:#d2604d;
+  --steel:#8c9196; --stage:#262728; --ring:#e6e2d6; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+h1{font-family:"Barlow Condensed","Noto Sans JP",sans-serif;font-weight:700;font-size:clamp(28px,5vw,44px);line-height:1.05;margin:0 0 4px;letter-spacing:.01em}
+.sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 290px;gap:16px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.stage{position:relative;background:var(--stage);border:2px solid var(--line);border-radius:4px;overflow:hidden;
+  background-image:repeating-linear-gradient(135deg,transparent 0 22px,rgba(0,0,0,.035) 22px 24px);touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:pointer}
+.stage svg{display:block;width:100%;height:auto}
+.stripe{height:10px;background:repeating-linear-gradient(45deg,var(--paint) 0 14px,var(--ink) 14px 28px)}
+.msg{position:absolute;left:0;right:0;top:14px;text-align:center;font-family:"Barlow Condensed","Noto Sans JP",sans-serif;font-size:26px;font-weight:700;pointer-events:none;min-height:34px}
+.msg.good{color:var(--good)} .msg.bad{color:var(--bad)} .msg.perf{color:var(--paint)}
+.hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:13px;color:var(--muted);pointer-events:none}
+.panel{background:var(--panel);border:2px solid var(--line);border-radius:4px;padding:14px}
+.lvl{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.lvl b{font-family:"Barlow Condensed",sans-serif;font-size:54px;line-height:1}
+.lvl span{color:var(--muted);font-size:13px}
+.meter{margin:10px 0}
+.meter .lab{display:flex;justify-content:space-between;font-size:13px}
+.bar{height:10px;background:var(--bg);border:1px solid var(--line);margin-top:3px;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ink);transition:width .25s}
+.bar.xp i{background:var(--paint)} .bar.fat i{background:var(--bad)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+button{font:inherit;font-size:14px;font-weight:700;padding:9px 14px;border:2px solid var(--ink);background:var(--bg);color:var(--ink);border-radius:3px;cursor:pointer}
+button.primary{background:var(--paint);border-color:var(--paint);color:#1c1a14}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,.stage:focus-visible{outline:3px solid var(--paint);outline-offset:2px}
+.status{font-size:13px;margin-top:10px;min-height:20px}
+.status .warn{color:var(--bad);font-weight:700}
+.log{margin-top:16px;font-size:13px;color:var(--muted);max-height:150px;overflow:auto;border-top:1px solid var(--line);padding-top:8px}
+.log div{padding:1px 0}
+.row{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-top:10px;color:var(--muted)}
+.row b{color:var(--ink)}
+.foot{margin-top:18px;font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>地下ジム ベンチプレス・シミュレータ</h1>
+  <p class="sub">縮むリングが黄色い帯に重なった瞬間にスペース / クリック / タップ。疲労が溜まったら休憩、エネルギーと水分は切らさないこと。</p>
+
+  <div class="grid">
+    <div>
+      <div class="stage" id="stage" tabindex="0" aria-label="トレーニングエリア。スペースキーかタップでレップ">
+        <div class="stripe"></div>
+        <svg viewBox="0 0 600 380" aria-hidden="true">
+          <!-- bench -->
+          <rect x="150" y="250" width="270" height="16" fill="var(--steel)"/>
+          <rect x="175" y="266" width="10" height="70" fill="var(--steel)"/>
+          <rect x="385" y="266" width="10" height="70" fill="var(--steel)"/>
+          <rect x="160" y="334" width="40" height="6" fill="var(--steel)"/>
+          <rect x="370" y="334" width="40" height="6" fill="var(--steel)"/>
+          <!-- rack uprights -->
+          <rect x="440" y="120" width="10" height="220" fill="var(--steel)"/>
+          <rect x="430" y="150" width="22" height="6" fill="var(--steel)"/>
+          <!-- body -->
+          <g stroke="var(--ink)" stroke-linecap="round" fill="none">
+            <line x1="200" y1="240" x2="400" y2="240" stroke-width="30"/>
+            <path d="M200 240 L150 245 L120 300 L120 336" stroke-width="18"/>
+            <path d="M210 240 L165 250 L140 300 L140 336" stroke-width="16" opacity=".75"/>
+          </g>
+          <circle cx="420" cy="232" r="20" fill="var(--ink)"/>
+          <!-- arms + bar -->
+          <g id="arms" stroke="var(--ink)" stroke-width="12" stroke-linecap="round" fill="none">
+            <polyline id="armL" points="370,235 360,205 365,180"/>
+          </g>
+          <g id="barbell">
+            <rect x="345" y="172" width="40" height="8" rx="2" fill="var(--steel)"/>
+            <rect x="335" y="140" width="60" height="10" rx="3" fill="var(--ink)" transform="rotate(90 365 176)"/>
+            <circle cx="365" cy="176" r="38" fill="none" stroke="var(--steel)" stroke-width="14"/>
+            <circle cx="365" cy="176" r="6" fill="var(--ink)"/>
+          </g>
+          <!-- timing ring -->
+          <g id="ringG" transform="translate(140 120)">
+            <circle id="bandOuter" r="64" fill="none" stroke="var(--paint)" stroke-width="18" opacity=".35"/>
+            <circle id="bandPerf" r="55" fill="none" stroke="var(--paint)" stroke-width="5"/>
+            <circle id="ring" r="110" fill="none" stroke="var(--ring)" stroke-width="3"/>
+          </g>
+        </svg>
+        <div class="msg" id="msg"></div>
+        <div class="hint" id="hint">「セット開始」を押してから</div>
+      </div>
+      <div class="row">
+        <div>このセット <b id="setReps">0</b> レップ</div>
+        <div>コンボ <b id="combo">0</b></div>
+        <div>ミス <b id="miss">0</b>/3</div>
+        <div>累計 <b id="total">0</b> レップ</div>
+        <div>最高コンボ <b id="best">0</b></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="lvl"><b id="lv">1</b><span>筋力レベル（最大51）</span></div>
+      <div class="meter"><div class="lab"><span>経験値</span><span id="xpT">0/100</span></div><div class="bar xp"><i id="xpB"></i></div></div>
+      <div class="meter"><div class="lab"><span>疲労</span><span id="fatT">0%</span></div><div class="bar fat"><i id="fatB"></i></div></div>
+      <div class="meter"><div class="lab"><span>エネルギー</span><span id="enT">100</span></div><div class="bar"><i id="enB"></i></div></div>
+      <div class="meter"><div class="lab"><span>水分</span><span id="hyT">100</span></div><div class="bar"><i id="hyB"></i></div></div>
+      <div class="status" id="status"></div>
+      <div class="btns">
+        <button class="primary" id="startBtn">セット開始</button>
+        <button id="stopBtn" disabled>セット終了</button>
+        <button id="eatBtn">食べる +30</button>
+        <button id="drinkBtn">飲む +30</button>
+        <button id="resetBtn">リセット</button>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+  <p class="foot">ファンメイドの練習用シミュレータです。数値は実際のゲームとは異なります。進行状況はこのブラウザに保存されます。</p>
+</div>
+
+<script>
+(function(){
+  const KEY='bench-sim-v1';
+  const def={xp:0,level:1,energy:100,hydration:100,fatigue:0,restUntil:0,painUntil:0,total:0,best:0};
+  let S=Object.assign({},def);
+  try{const raw=localStorage.getItem(KEY); if(raw) S=Object.assign({},def,JSON.parse(raw));}catch(e){}
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+
+  const $=id=>document.getElementById(id);
+  const ring=$('ring'), bandOuter=$('bandOuter'), bandPerf=$('bandPerf');
+  const msg=$('msg'), hint=$('hint');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const R0=110, TOL=10, PERF=3.5;
+  let TARGET=55, speedMul=1;
+  let active=false, phase='idle', r=R0, t0=0, dur=1400, setReps=0, combo=0, misses=0, lastXp=0;
+  let barLift=0, barAnim=null;
+
+  const need=l=>100+l*30;
+  const now=()=>Date.now();
+  const pain=()=>S.painUntil>now();
+  const resting=()=>S.restUntil>now();
+
+  function log(t){const d=document.createElement('div');d.textContent=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'  '+t;$('log').prepend(d);}
+  function flash(t,c){msg.textContent=t;msg.className='msg '+(c||'');clearTimeout(flash.h);flash.h=setTimeout(()=>{msg.textContent='';},700);}
+
+  function render(){
+    $('lv').textContent=S.level;
+    const n=need(S.level);
+    $('xpT').textContent=S.level>=51?'MAX':Math.floor(S.xp)+'/'+n;
+    $('xpB').style.width=(S.level>=51?100:S.xp/n*100)+'%';
+    $('fatT').textContent=Math.floor(S.fatigue)+'%'; $('fatB').style.width=S.fatigue+'%';
+    $('enT').textContent=Math.floor(S.energy); $('enB').style.width=S.energy+'%';
+    $('hyT').textContent=Math.floor(S.hydration); $('hyB').style.width=S.hydration+'%';
+    $('setReps').textContent=setReps; $('combo').textContent=combo; $('miss').textContent=misses;
+    $('total').textContent=S.total; $('best').textContent=S.best;
+    const st=[];
+    if(resting()) st.push('<span class="warn">疲労困憊：あと'+Math.ceil((S.restUntil-now())/1000)+'秒休憩</span>');
+    if(pain()) st.push('<span class="warn">手の震え（残り'+Math.ceil((S.painUntil-now())/1000)+'秒）：帯が揺れる</span>');
+    if(S.energy<20) st.push('<span class="warn">エネルギー不足：経験値半減</span>');
+    if(S.hydration<20) st.push('<span class="warn">脱水気味：経験値半減</span>');
+    if(S.energy<=0||S.hydration<=0) st.push('<span class="warn">トレーニング不可：補給して</span>');
+    $('status').innerHTML=st.join('<br>');
+    const canStart=!active&&!resting()&&S.energy>0&&S.hydration>0;
+    $('startBtn').disabled=!canStart; $('stopBtn').disabled=!active;
+  }
+
+  function setBar(lift){ // 0 = chest, 1 = locked out
+    barLift=lift;
+    const y=176-lift*55;
+    $('barbell').setAttribute('transform','translate(0 '+(y-176)+')');
+    const elbowX=360-lift*4, elbowY=212-lift*35;
+    $('armL').setAttribute('points','372,236 '+elbowX+','+elbowY+' 365,'+(y+4));
+  }
+  function animateBar(to,ms,cb){
+    if(reduce){setBar(to);cb&&cb();return;}
+    const from=barLift,s=performance.now();
+    cancelAnimationFrame(barAnim);
+    const step=t=>{const k=Math.min(1,(t-s)/ms);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;setBar(from+(to-from)*e);if(k<1)barAnim=requestAnimationFrame(step);else cb&&cb();};
+    barAnim=requestAnimationFrame(step);
+  }
+
+  function targetR(t){return pain()?TARGET+Math.sin(t/90)*7:TARGET;}
+
+  function startRep(){
+    if(!active) return;
+    dur=Math.max(550,(1500-S.level*12-S.fatigue*3)*speedMul);
+    r=R0; t0=performance.now(); phase='ring';
+    hint.textContent='リングが帯に重なったら押す';
+  }
+
+  function loop(t){
+    if(phase==='ring'){
+      const k=(t-t0)/dur; r=R0-(R0-15)*k;
+      ring.setAttribute('r',Math.max(r,1));
+      const tr=targetR(t); bandOuter.setAttribute('r',tr); bandPerf.setAttribute('r',tr);
+      if(r<targetR(t)-TOL-2) fail('遅い');
+    }
+    if(Math.floor(t/500)!==loop.tick){loop.tick=Math.floor(t/500);render();}
+    requestAnimationFrame(loop);
+  }
+
+  function press(){
+    if(!active){ if(!$('startBtn').disabled) startSet(); return; }
+    if(phase!=='ring') return;
+    const d=Math.abs(r-targetR(performance.now()));
+    if(d<=PERF) success(true); else if(d<=TOL) success(false); else fail(r>TARGET?'早い':'遅い');
+  }
+
+  function mult(){let m=1;if(S.energy<20)m*=.5;if(S.hydration<20)m*=.5;return m;}
+
+  function success(perfect){
+    phase='lift';
+    setReps++; combo++; S.total++; if(combo>S.best)S.best=combo;
+    const dim=1/(1+setReps*0.07);
+    let gain=(perfect?11:6)*dim*mult()*(1+Math.min(combo,10)*0.03);
+    addXp(gain);
+    S.fatigue=Math.min(100,S.fatigue+3.2+S.level*0.04+(perfect?0:0.8));
+    S.energy=Math.max(0,S.energy-0.7); S.hydration=Math.max(0,S.hydration-1.0);
+    flash(perfect?'パーフェクト +'+gain.toFixed(1):'グッド +'+gain.toFixed(1),perfect?'perf':'good');
+    ring.setAttribute('r',0);
+    animateBar(1,320,()=>animateBar(0,380,()=>afterRep()));
+    save(); render();
+  }
+
+  function fail(why){
+    phase='lift'; combo=0; misses++;
+    S.fatigue=Math.min(100,S.fatigue+6);
+    flash('ミス（'+why+'）','bad');
+    ring.setAttribute('r',0);
+    animateBar(0.3,250,()=>animateBar(0,250,()=>{
+      if(misses>=3){
+        log('セット失敗（'+setReps+'レップ）');
+        if(Math.random()<0.35){S.painUntil=now()+180000;log('手の震えが発生：3分間');}
+        endSet(); return;
+      }
+      afterRep();
+    }));
+    save(); render();
+  }
+
+  function afterRep(){
+    if(S.fatigue>=100){
+      S.restUntil=now()+90000; log('疲労困憊。90秒休憩が必要');
+      flash('疲労困憊','bad'); endSet(); return;
+    }
+    if(S.energy<=0||S.hydration<=0){log('補給切れでセット中断');endSet();return;}
+    setTimeout(startRep,reduce?150:350);
+  }
+
+  function addXp(g){
+    if(S.level>=51) return;
+    S.xp+=g;
+    while(S.level<51&&S.xp>=need(S.level)){S.xp-=need(S.level);S.level++;log('筋力レベル '+S.level+' に上がった');flash('レベルアップ '+S.level,'perf');}
+    if(S.level>=51)S.xp=0;
+  }
+
+  function startSet(){
+    active=true; setReps=0; combo=0; misses=0;
+    TARGET=Math.round(40+Math.random()*35);      // 帯の半径 40〜75
+    speedMul=0.8+Math.random()*0.45;             // 速度係数 0.8〜1.25（小さいほど速い）
+    bandOuter.setAttribute('r',TARGET); bandPerf.setAttribute('r',TARGET);
+    const size=TARGET<52?'小さめ':TARGET>63?'大きめ':'普通';
+    const spd=speedMul<0.95?'速め':speedMul>1.1?'遅め':'普通';
+    log('セット開始（リング'+size+'・速度'+spd+'）'); render(); startRep();
+  }
+  function endSet(){
+    if(active&&setReps>0&&misses<3) log('セット終了（'+setReps+'レップ）');
+    active=false; phase='idle'; ring.setAttribute('r',R0);
+    hint.textContent='「セット開始」を押してから'; save(); render();
+  }
+
+  // recovery over time
+  setInterval(()=>{
+    if(!active&&S.fatigue>0){S.fatigue=Math.max(0,S.fatigue-(resting()?1.2:0.8));save();}
+  },1000);
+
+  const stage=$('stage');
+  stage.addEventListener('pointerdown',e=>{e.preventDefault();press();});
+  document.addEventListener('keydown',e=>{
+    if(e.code==='Space'&&!e.repeat&&!(e.target.tagName==='BUTTON')){e.preventDefault();press();}
+  });
+  $('startBtn').onclick=startSet;
+  $('stopBtn').onclick=endSet;
+  $('eatBtn').onclick=()=>{S.energy=Math.min(100,S.energy+30);log('食べた：エネルギー +30');save();render();};
+  $('drinkBtn').onclick=()=>{S.hydration=Math.min(100,S.hydration+30);log('飲んだ：水分 +30');save();render();};
+  $('resetBtn').onclick=()=>{if(confirm('進行状況をすべてリセットする？')){S=Object.assign({},def);endSet();$('log').innerHTML='';save();render();}};
+
+  setBar(0); render(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
