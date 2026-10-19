@@ -269,7 +269,7 @@ button:focus-visible{outline:3px solid var(--l1);outline-offset:3px}
     <h2>配当（1ラインあたり）とポイント</h2>
     <div class="paytable" id="paytable"></div>
     <p class="help">1枚で中段、2枚で上中下段、3枚で斜めを含む5ラインが有効です。掛け枚数が少ないほど当たりにくくなり、戦闘での攻撃力も下がります。</p>
-    <p class="help">セブン・BAR・ベルがそろうとポイントがたまり、10ptでモンスターが出現します。戦闘中は1回転ごとにハートを1つ使い、何かがそろえば攻撃します。ダイヤ・ベル・BARでハート1つ、セブンで2つ回復します。はずれると負け、ハートが尽きると逃げられます。倒すとフィーバー（ベット不要で10回転）に入ります。</p>
+    <p class="help">セブン・BAR・ベル・ダイヤがそろうとポイントがたまり、10ptでモンスターが出現します。戦闘中は1回転ごとにハートを1つ使い、何かがそろえば攻撃します。ダイヤ・ベル・BARでハート1つ、セブンで2つ回復します。はずれると負け、ハートが尽きると逃げられます。倒すとフィーバー（ベット不要で10回転）に入ります。</p>
     <p class="help">キーボード：スペースでスタート／左から順に停止、Z・X・Cで各リール停止、1〜3で掛け枚数、Aでオートプレイ切り替え。</p>
     <div class="tools">
       <button class="tool" id="mute">音：オン</button>
@@ -368,7 +368,7 @@ const SVG={
  cherry:'<svg viewBox="0 0 32 32"><path d="M17 5C14 12 11 15 10 18M17 5c1 7 4 10 5 14" stroke="#2f7f2f" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M17 5c4-2.5 8-1.5 10 1.5-4 1.5-7 .5-10-1.5z" fill="#56c45a" stroke="#1f5e22"/><circle cx="10" cy="22" r="6" fill="#d81b3a" stroke="#4a0710" stroke-width="1.5"/><circle cx="22" cy="23" r="6" fill="#d81b3a" stroke="#4a0710" stroke-width="1.5"/><circle cx="8" cy="20" r="1.6" fill="#fff" opacity=".85"/><circle cx="20" cy="21" r="1.6" fill="#fff" opacity=".85"/></svg>'
 };
 const NAMES={seven:'セブン',bar:'BAR',bell:'ベル',gem:'ダイヤ',grape:'ぶどう',cherry:'チェリー'};
-const PT={seven:6,bar:4,bell:2};
+const PT={seven:8,bar:4,bell:2,gem:1};
 const DMG={cherry:4,grape:6,gem:8,bell:10,bar:18,seven:32};
 const HEAL={cherry:0,grape:0,gem:1,bell:1,bar:1,seven:2};
 const BETMULT={1:.5,2:.75,3:1};
@@ -503,7 +503,7 @@ function setPhase(p){G.phase=p;$('#strip').dataset.phase=p;$('#cab').classList.t
 function phaseMessage(){
   if(G.phase==='battle')return `${MONS[G.lv].name}と たたかい中。そろえて こうげき！`;
   if(G.phase==='fever')return `フィーバー中！ 残り${G.fLeft}回 ベット不要`;
-  return 'セブン・BAR・ベルで ポイントを ためよう';
+  return 'セブン・BAR・ベル・ダイヤで ポイントを ためよう';
 }
 
 /* ===== 演出パーツ ===== */
