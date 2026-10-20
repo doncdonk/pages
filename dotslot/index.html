@@ -270,7 +270,7 @@ button:focus-visible{outline:3px solid var(--l1);outline-offset:3px}
     <h2>配当（1ラインあたり）とポイント</h2>
     <div class="paytable" id="paytable"></div>
     <p class="help">1枚で中段、2枚で上中下段、3枚で斜めを含む5ラインが有効です。掛け枚数が少ないほど当たりにくくなり、戦闘での攻撃力も下がります。</p>
-    <p class="help">セブン・BAR・ベル・ダイヤがそろうとポイントがたまり、10ptでモンスターが出現します。戦闘中は1回転ごとにハートを1つ使い、何かがそろえば攻撃します。ダイヤ・ベル・BARでハート1つ、セブンで2つ回復します。はずれると負け、ハートが尽きると逃げられます。倒すとフィーバー（ベット不要で10回転）に入ります。フィーバー中はリールのチェリーがすべて7に変わり、7がそろうたびに50%で残り回数が+3回されます。ライン上に7が2つ並んで外れたときは、必ずもう1回回せます。フィーバー中の配当は、倒したモンスターのレベルに応じてLv1で×1、Lv2で×1.5、Lv3で×2から始まり、7がそろうたびに倍率が+1されます（最大×10）。</p>
+    <p class="help">セブン・BAR・ベル・ダイヤがそろうとポイントがたまり、10ptでモンスターが出現します。戦闘中は1回転ごとにハートを1つ使い、何かがそろえば攻撃します。ダイヤ・ベル・BARでハート1つ、セブンで2つ回復します。はずれると負け、ハートが尽きると逃げられます。負けたり逃げられたりすると、次のモンスターのレベルが1つ下がります（Lv1より下にはなりません）。倒すとフィーバー（ベット不要で10回転）に入ります。フィーバー中はリールのチェリーがすべて7に変わり、7がそろうたびに50%で残り回数が+3回されます。ライン上に7が2つ並んで外れたときは、必ずもう1回回せます。フィーバー中の配当は、倒したモンスターのレベルに応じてLv1で×1、Lv2で×1.5、Lv3で×2から始まり、7がそろうたびに倍率が+1されます（最大×10）。</p>
     <p class="help">キーボード：スペースでスタート／左から順に停止、Z・X・Cで各リール停止、1〜3で掛け枚数、Aでオートプレイ切り替え。</p>
     <div class="tools">
       <button class="tool" id="mute">音：オン</button>
@@ -642,13 +642,21 @@ async function loseBattle(){
   play($('#shade'),[{opacity:0},{opacity:.6}],{duration:600,easing:'steps(4)',fill:'forwards'});
   await wait(500);say('ゆうしゃは たおれた… ポイントは0から');
   await wait(1400);
+  await lvDown();
   await backToNormal();
 }
 async function flee(){
   say('ハートが つきた… モンスターは にげていった');sfx.flee();
   await done(play(mon,[{transform:'translate(0,0)'},{transform:'translate(10px,-12px)',offset:.25},{transform:'translate(30px,0)',offset:.5},{transform:'translate(70px,-12px)',offset:.75},{transform:'translate(140px,0)'}],{duration:800,easing:'steps(8)',fill:'forwards'}));
   await wait(1000);
+  await lvDown();
   await backToNormal();
+}
+async function lvDown(){
+  if(G.lv<=1)return;
+  G.lv--;save();
+  say(`つぎのモンスターは Lv${G.lv}に さがりました`);
+  await wait(900);
 }
 async function winBattle(){
   await wait(150);
